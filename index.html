@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Notepad - Zawad & Ridwan</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #f0f2f5; }
+    .container { max-width: 1400px; margin: auto; display: flex; gap: 15px; }
+    textarea { width: 100%; height: 78vh; padding: 15px; font-size: 17px; border: 1px solid #ccc; border-radius: 8px; resize: none; }
+    .sidebar { width: 380px; background: white; padding: 15px; border-radius: 8px; overflow-y: auto; max-height: 82vh; }
+    .history-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 14.5px; line-height: 1.4; }
+    .login { text-align: center; padding: 80px 20px; }
+    button { padding: 14px 28px; font-size: 18px; margin: 10px; cursor: pointer; border-radius: 6px; }
+    .name-btn { padding: 15px 30px; font-size: 18px; width: 200px; }
+    #errorMsg { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login">
+    <h1>🔐 Shared Notepad</h1>
+    <p>Enter Password</p>
+    <div style="position:relative; display:inline-block;">
+      <input type="password" id="password" placeholder="Password" style="padding:12px; width:280px; font-size:17px;">
+      <span id="eye" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:22px;">👁</span>
+    </div>
+    <br><br>
+    <button onclick="checkPassword()">Login</button>
+    <p id="errorMsg"></p>
+  </div>
+
+  <!-- Name Selection -->
+  <div id="nameScreen" class="login" style="display:none;">
+    <h2>Choose Your Name</h2>
+    <button class="name-btn" onclick="selectUser('Zawad')">Zawad</button>
+    <button class="name-btn" onclick="selectUser('Ridwan')">Ridwan</button>
+  </div>
+
+  <!-- Main App -->
+  <div id="mainApp" class="container" style="display:none;">
+    <div style="flex:1;">
+      <h2>My Note (<span id="userName"></span>) 
+        <button onclick="showCompare()" style="float:right;">🔄 Compare Both Notes</button>
+      </h2>
+      <textarea id="editor" placeholder="Type here..."></textarea>
+    </div>
+    
+    <div class="sidebar">
+      <h3>📜 Both Users History 
+        <button onclick="clearHistory()" style="font-size:12px; padding:5px 10px; float:right;">Reset All</button>
+      </h3>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- Compare Modal -->
+  <div id="compareModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; padding:20px;">
+    <div style="background:white; max-width:1100px; margin:auto; border-radius:10px; padding:20px;">
+      <h2>📊 Notes Comparison</h2>
+      <button onclick="hideCompare()" style="float:right;">Close</button><br><br>
+      <table style="width:100%; border-collapse:collapse;">
+        <tr><th>Zawad's Note</th><th>Ridwan's Note</th></tr>
+        <tr>
+          <td><pre id="zawadText" style="white-space:pre-wrap;"></pre></td>
+          <td><pre id="ridwanText" style="white-space:pre-wrap;"></pre></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    console.log("✅ Script loaded successfully");
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3GszelDwALapumE7ubEuskHuKpVeTLnE",
+      authDomain: "shared-notepad-665f3.firebaseapp.com",
+      databaseURL: "https://shared-notepad-665f3-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "shared-notepad-665f3",
+      storageBucket: "shared-notepad-665f3.firebasestorage.app",
+      messagingSenderId: "870772585147",
+      appId: "1:870772585147:web:76e7dd52e4db3e3261af9e"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    console.log("✅ Firebase initialized");
+
+    let currentUser = "";
+    let currentIP = "Unknown";
+
+    async function getIP() {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        currentIP = data.ip;
+      } catch (e) {
+        currentIP = "Unknown";
+      }
+    }
+
+    // Eye Toggle
+    document.getElementById('eye').addEventListener('click', function() {
+      const pwd = document.getElementById('password');
+      if (pwd.type === "password") {
+        pwd.type = "text";
+        this.textContent = "🙈";
+      } else {
+        pwd.type = "password";
+        this.textContent = "👁";
+      }
+    });
+
+    window.checkPassword = async function() {
+      console.log("🔘 Login button clicked");
+      document.getElementById('errorMsg').innerHTML = "";
+      const pass = document.getElementById('password').value.trim();
+
+      if (pass === "zawad0001") {
+        if (confirm("Reset ALL history?")) {
+          await db.ref('history').remove();
+          alert("✅ History Reset!");
+        }
+        return;
+      }
+
+      if (pass === "9876543210") {
+        console.log("✅ Correct password");
+        await getIP();
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('nameScreen').style.display = 'block';
+      } else {
+        console.log("❌ Wrong password");
+        document.getElementById('errorMsg').innerHTML = "❌ Wrong Password!";
+      }
+    };
+
+    window.selectUser = function(name) {
+      currentUser = name;
+      document.getElementById('nameScreen').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'flex';
+      document.getElementById('userName').textContent = name;
+      loadNote();
+    };
+
+    function loadNote() {
+      // Your note
+      db.ref('notes/' + currentUser).on('value', (snapshot) => {
+        const data = snapshot.val();
+        document.getElementById('editor').value = data && data.text ? data.text : '';
+      });
+
+      // Combined History
+      db.ref('history').orderByChild('timestamp').limitToLast(50).on('value', (snapshot) => {
+        const div = document.getElementById('historyList');
+        div.innerHTML = '';
+        if (!snapshot.exists()) {
+          div.innerHTML = "<p style='color:#888;text-align:center;'>No history yet</p>";
+          return;
+        }
+        snapshot.forEach(child => {
+          const h = child.val();
+          const time = new Date(h.timestamp).toLocaleString();
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          item.innerHTML = `<strong>${h.user}</strong> (${h.ip})<br>${time}<br><small>${h.action}</small>`;
+          div.appendChild(item);
+        });
+      });
+
+      let timeout;
+      document.getElementById('editor').addEventListener('input', () => {
+        clearTimeout(timeout);
+        timeout = setTimeout(saveNote, 800);
+      });
+    }
+
+    function saveNote() {
+      const text = document.getElementById('editor').value;
+      db.ref('notes/' + currentUser).set({ text: text, lastEditedBy: currentUser, lastEditedAt: Date.now() });
+      db.ref('history').push({ user: currentUser, ip: currentIP, action: "Edited note", timestamp: Date.now() });
+    }
+
+    window.showCompare = function() {
+      document.getElementById('compareModal').style.display = 'block';
+      db.ref('notes/Zawad').once('value', s => {
+        document.getElementById('zawadText').textContent = s.val() ? s.val().text || "(Empty)" : "(Empty)";
+      });
+      db.ref('notes/Ridwan').once('value', s => {
+        document.getElementById('ridwanText').textContent = s.val() ? s.val().text || "(Empty)" : "(Empty)";
+      });
+    };
+
+    window.hideCompare = function() {
+      document.getElementById('compareModal').style.display = 'none';
+    };
+
+    window.clearHistory = function() {
+      if (confirm("Clear all history?")) db.ref('history').remove();
+    };
+  </script>
+</body>
+</html>
