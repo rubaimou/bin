@@ -11,7 +11,7 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: Arial, sans-serif; background:#f0f2f5; }
     .header { background:#0066cc; color:white; padding:15px; text-align:center; font-size:20px; position:relative; }
-    .container { display:flex; height:calc(100vh - 60px); }
+    .container { display:flex; height:calc(100vh - 120px); }
     .editor-area { flex:1; padding:15px; display:flex; flex-direction:column; }
     .sidebar { width:380px; background:white; border-left:1px solid #ddd; transition:0.4s; }
     .sidebar.minimized { width:55px; }
@@ -22,71 +22,61 @@
       font-size:17px; 
       border:1px solid #ccc; 
       border-radius:8px; 
-      outline:none; 
-      overflow-y:auto;
+      resize:none; 
+      direction: ltr !important;
       background:white;
-      min-height:300px;
+      overflow-y:auto;
+      line-height: 1.6;
     }
-    #editor:focus { border-color:#0066cc; }
+    
+    #editor:focus { outline:none; border-color:#0066cc; }
+    
+    .date-header { background:#e3f2fd; padding:10px; margin:8px 0; cursor:pointer; font-weight:bold; }
+    .history-item { padding:8px 12px; border-bottom:1px solid #eee; font-size:14px; }
 
-    .toolbar {
-      background:#f8f9fa;
-      padding:8px;
-      border:1px solid #ccc;
-      border-radius:6px;
-      margin-bottom:8px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:5px;
-    }
-    .toolbar button, .toolbar select {
-      padding:6px 10px;
-      font-size:16px;
-      cursor:pointer;
-    }
-
-    .date-header { 
-      background:#e3f2fd; 
-      padding:10px; 
-      margin:12px 0 4px 0; 
-      cursor:pointer; 
-      font-weight:bold; 
-      border-radius:6px;
-      user-select:none;
-    }
-    .date-content {
-      display:block;
-      padding-left:15px;
-      border-left:3px solid #0066cc;
-    }
-    .collapsed .date-content { display:none; }
-
-    button { padding:10px 14px; margin:4px; border-radius:6px; cursor:pointer; }
+    button { padding:10px 14px; margin:4px; border-radius:6px; cursor:pointer; border:1px solid #ddd; }
     .toggle-btn { position:absolute; right:15px; top:12px; font-size:26px; background:none; border:none; color:white; cursor:pointer; }
+    
+    .toolbar { background:#e8e8e8; padding:12px; border-radius:8px; margin-bottom:10px; display:flex; flex-wrap:wrap; gap:5px; }
+    .toolbar button { padding:8px 12px; font-size:14px; }
+    .color-btn { width:40px; height:40px; padding:0; margin:4px; border:none; border-radius:4px; cursor:pointer; border:2px solid #999; }
+
+    #loginScreen, #nameScreen { position:fixed; top:0; left:0; width:100%; height:100%; background:#f0f2f5; display:flex; align-items:center; justify-content:center; z-index:9999; }
+    #loginScreen.hidden, #nameScreen.hidden { display:none; }
+    
+    .login-card, .name-card { background:white; padding:40px; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1); text-align:center; }
+    .login-card h1, .name-card h2 { margin-bottom:20px; }
+    .login-card input { padding:12px; width:280px; font-size:17px; margin:10px 0; border:1px solid #ccc; border-radius:6px; }
+    .login-card button, .name-card button { padding:12px 30px; margin:10px; font-size:16px; background:#0066cc; color:white; border:none; border-radius:6px; cursor:pointer; }
   </style>
 </head>
 <body>
 
-  <!-- Login -->
-  <div id="loginScreen" style="text-align:center; padding:80px 20px;">
-    <h1>🔐 Ridzaw Notepad</h1>
-    <p>Enter Password</p>
-    <input type="password" id="password" placeholder="Password" style="padding:12px; width:280px; font-size:17px;">
-    <span id="eye" style="font-size:22px; cursor:pointer; margin-left:-35px;">👁</span>
-    <br><br>
-    <button onclick="checkPassword()" style="font-size:18px;">Login</button>
-    <p id="errorMsg" style="color:red; margin-top:10px;"></p>
+  <!-- Login Screen -->
+  <div id="loginScreen" class="hidden">
+    <div class="login-card">
+      <h1>🔐 Ridzaw Notepad</h1>
+      <p>Enter Password</p>
+      <div style="position:relative;">
+        <input type="password" id="password" placeholder="Password">
+        <span id="eye" style="font-size:22px; cursor:pointer; position:absolute; right:10px; top:10px;">👁</span>
+      </div>
+      <button onclick="checkPassword()">Login</button>
+      <p id="errorMsg" style="color:red; margin-top:10px;"></p>
+    </div>
   </div>
 
-  <!-- Name Selection -->
-  <div id="nameScreen" style="display:none; text-align:center; padding:80px;">
-    <h2>Choose Your Name</h2><br>
-    <button onclick="selectUser('Zawad')" style="padding:15px 40px; font-size:18px;">Zawad</button>
-    <button onclick="selectUser('Ridwan')" style="padding:15px 40px; font-size:18px;">Ridwan</button>
+  <!-- Name Selection Screen -->
+  <div id="nameScreen" class="hidden">
+    <div class="name-card">
+      <h2>Choose Your Name</h2>
+      <button onclick="selectUser('Zawad')">Zawad</button>
+      <button onclick="selectUser('Ridwan')">Ridwan</button>
+    </div>
   </div>
 
   <!-- Main App -->
-  <div id="mainApp" style="display:none; height:100vh;">
+  <div id="mainApp" style="display:none; height:100vh; display:flex; flex-direction:column;">
     <div class="header">
       Ridzaw Shared Notepad
       <span onclick="toggleSidebar()" class="toggle-btn">☰</span>
@@ -94,30 +84,30 @@
 
     <div class="container">
       <div class="editor-area">
-        <h3>My Note (<span id="userName"></span>)</h3>
+        <h3>My Note (<span id="userName"></span>) - <span id="currentDate"></span></h3>
         
         <div class="toolbar">
-          <button onclick="formatText('bold')" title="Bold"><b>B</b></button>
-          <button onclick="formatText('underline')" title="Underline"><u>U</u></button>
-          <button onclick="formatText('italic')" title="Italic"><i>I</i></button>
-          <button onclick="highlightText()" title="Highlight">🖍</button>
+          <button onclick="insertDate()" style="background:#0066cc; color:white;">📅 Date</button>
+          <button onclick="insertSection()" style="background:#0066cc; color:white;">📝 Section</button>
           
-          <select onchange="changeTextColor(this.value)">
-            <option value="">Text Color</option>
-            <option value="red">Red</option>
-            <option value="blue">Blue</option>
-            <option value="green">Green</option>
-            <option value="orange">Orange</option>
-            <option value="purple">Purple</option>
-            <option value="black">Black</option>
-          </select>
-
-          <button onclick="insertDateSection()" title="Insert Collapsible Date">📅 Date Section</button>
-          <button onclick="showCompare()">🔄 Compare</button>
-          <button onclick="showCalculator()">🧮 Calculator</button>
+          <button class="color-btn" style="background:red;" onclick="applyColor('red')" title="Red"></button>
+          <button class="color-btn" style="background:green;" onclick="applyColor('green')" title="Green"></button>
+          <button class="color-btn" style="background:blue;" onclick="applyColor('blue')" title="Blue"></button>
+          <button class="color-btn" style="background:orange;" onclick="applyColor('orange')" title="Orange"></button>
+          <button class="color-btn" style="background:black;" onclick="applyColor('black')" title="Black"></button>
+          <button class="color-btn" style="background:gray;" onclick="applyColor('black');" title="Remove Color"></button>
+          
+          <button onclick="applyBold()" style="background:#0066cc; color:white; font-weight:bold;">B</button>
+          <button onclick="applyItalic()" style="background:#0066cc; color:white; font-style:italic;">I</button>
+          <button onclick="removeFormat()" style="background:#cc0000; color:white;">Clear Format</button>
         </div>
 
-        <div id="editor" contenteditable="true" placeholder="Type here..."></div>
+        <div id="editor" contenteditable="true" style="flex:1; padding:15px; font-size:17px; border:1px solid #ccc; border-radius:8px; background:white; overflow-y:auto; line-height: 1.6;" placeholder="Start typing..."></div>
+        
+        <div style="margin-top:10px;">
+          <button onclick="showCompare()">🔄 Compare Notes</button>
+          <button onclick="showCalculator()">🧮 Calculator</button>
+        </div>
       </div>
 
       <div class="sidebar" id="sidebar">
@@ -127,30 +117,38 @@
     </div>
   </div>
 
-  <!-- Modals -->
+  <!-- Compare Modal -->
   <div id="compareModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; padding:15px;">
-    <div style="background:white; max-width:1100px; margin:auto; border-radius:10px; padding:20px;">
+    <div style="background:white; max-width:1100px; margin:auto; border-radius:10px; padding:20px; height:90vh; overflow-y:auto;">
       <h2>📊 Notes Comparison</h2>
-      <button onclick="hideCompare()" style="float:right;">Close</button><br><br>
+      <button onclick="hideCompare()" style="float:right; background:#cc0000; color:white; padding:8px 16px;">Close</button><br><br>
       <table style="width:100%; border-collapse:collapse;">
-        <tr><th>Zawad's Note</th><th>Ridwan's Note</th></tr>
+        <tr style="background:#f0f0f0;">
+          <th style="padding:10px; border:1px solid #ddd;">Zawad's Note</th>
+          <th style="padding:10px; border:1px solid #ddd;">Ridwan's Note</th>
+        </tr>
         <tr>
-          <td><pre id="zawadText" style="white-space:pre-wrap;"></pre></td>
-          <td><pre id="ridwanText" style="white-space:pre-wrap;"></pre></td>
+          <td style="padding:10px; border:1px solid #ddd; vertical-align:top;"><div id="zawadText" style="min-height:400px; background:#f9f9f9; padding:10px;"></div></td>
+          <td style="padding:10px; border:1px solid #ddd; vertical-align:top;"><div id="ridwanText" style="min-height:400px; background:#f9f9f9; padding:10px;"></div></td>
         </tr>
       </table>
     </div>
   </div>
 
+  <!-- Calculator Modal -->
   <div id="calcModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; padding:15px;">
     <div style="background:white; max-width:700px; margin:auto; border-radius:10px; padding:20px;">
       <h2>🧮 Calculator</h2>
       <button onclick="hideCalculator()" style="float:right;">Close</button><br><br>
+
       <label>From Date:</label><br>
       <input type="date" id="fromDate" style="width:100%; padding:10px; margin:8px 0;"><br>
+
       <label>To Date:</label><br>
       <input type="date" id="toDate" style="width:100%; padding:10px; margin:8px 0;">
+
       <button onclick="autoCalculate()" style="background:#0066cc; color:white; width:100%; padding:12px; margin-top:15px;">Calculate from Date Range</button>
+      
       <div id="calcResult" style="margin-top:20px; font-size:18px; line-height:1.8;"></div>
     </div>
   </div>
@@ -171,51 +169,58 @@
 
     let currentUser = "";
     let currentIP = "Unknown";
-    let saveTimeout = null;
+    let isLoggedIn = false;
+    let isLoading = false;
+
+    function updateCurrentDate() {
+      const options = { weekday:'short', month:'short', day:'numeric', year:'numeric' };
+      document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', options);
+    }
 
     fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => currentIP = d.ip).catch(() => {});
 
-    // Password Eye Toggle
     document.getElementById('eye').addEventListener('click', function() {
       const pwd = document.getElementById('password');
       pwd.type = pwd.type === "password" ? "text" : "password";
       this.textContent = pwd.type === "password" ? "👁" : "🙈";
     });
 
+    document.getElementById('password').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') checkPassword();
+    });
+
     function checkPassword() {
       const pass = document.getElementById('password').value.trim();
-      const errorMsg = document.getElementById('errorMsg');
-      errorMsg.innerHTML = "";
-
       if (pass === "9876543210") {
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('nameScreen').style.display = 'block';
-      } 
-      else if (pass === "zawad0001") {
-        if (confirm("Reset History?")) {
-          db.ref('history').remove();
-          alert("History Reset Done");
-        }
-      } 
-      else {
-        errorMsg.innerHTML = "❌ Wrong Password!";
+        isLoggedIn = true;
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('nameScreen').classList.remove('hidden');
+      } else if (pass === "zawad0001") {
+        if (confirm("Reset History?")) db.ref('history').remove();
+      } else {
+        document.getElementById('errorMsg').innerHTML = "❌ Wrong Password!";
       }
     }
 
     function selectUser(name) {
+      if (isLoading) return;
+      isLoading = true;
+      
       currentUser = name;
-      document.getElementById('nameScreen').style.display = 'none';
-      document.getElementById('mainApp').style.display = 'block';
+      document.getElementById('nameScreen').classList.add('hidden');
+      document.getElementById('mainApp').style.display = 'flex';
       document.getElementById('userName').textContent = name;
+      updateCurrentDate();
+      
       loadNote();
+      isLoading = false;
     }
 
     function loadNote() {
       const editor = document.getElementById('editor');
-      
       db.ref('notes/' + currentUser).on('value', (snap) => {
-        if (snap.val() && snap.val().html) {
-          editor.innerHTML = snap.val().html;
+        if (snap.val()) {
+          editor.innerHTML = snap.val().html || '';
         } else {
           editor.innerHTML = '';
         }
@@ -243,74 +248,94 @@
       });
     }
 
-    const editor = document.getElementById('editor');
-    
-    editor.addEventListener('input', () => {
+    let saveTimeout;
+    document.getElementById('editor').addEventListener('input', () => {
       clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(saveToFirebase, 800);
+      saveTimeout = setTimeout(() => {
+        const html = document.getElementById('editor').innerHTML;
+        db.ref('notes/' + currentUser).set({
+          html: html,
+          lastEditedBy: currentUser,
+          lastEditedAt: Date.now()
+        });
+
+        db.ref('history').push({
+          user: currentUser,
+          ip: currentIP,
+          action: "Edited note",
+          timestamp: Date.now()
+        });
+      }, 500);
     });
-
-    function saveToFirebase() {
-      if (!currentUser) return;
-      db.ref('notes/' + currentUser).set({
-        html: editor.innerHTML,
-        lastEditedBy: currentUser,
-        lastEditedAt: Date.now()
-      });
-
-      db.ref('history').push({
-        user: currentUser,
-        ip: currentIP,
-        action: "Edited note",
-        timestamp: Date.now()
-      });
-    }
-
-    function formatText(command) {
-      document.execCommand(command, false, null);
-      editor.focus();
-    }
-
-    function highlightText() {
-      document.execCommand('hiliteColor', false, '#ffff00');
-      editor.focus();
-    }
-
-    function changeTextColor(color) {
-      if (color) document.execCommand('foreColor', false, color);
-      editor.focus();
-    }
-
-    function insertDateSection() {
-      const date = new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-      const sectionHTML = `
-        <div class="date-header" onclick="this.parentElement.classList.toggle('collapsed')">
-          📅 ${date} ▼
-        </div>
-        <div class="date-content"><p>Type here...</p></div><br>
-      `;
-      editor.innerHTML += sectionHTML;
-      editor.focus();
-      saveToFirebase();
-    }
 
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('minimized');
     }
 
+    function insertDate() {
+      const editor = document.getElementById('editor');
+      const date = new Date().toLocaleDateString('en-US');
+      editor.focus();
+      document.execCommand('insertText', false, date + '\n');
+    }
+
+    function insertSection() {
+      const editor = document.getElementById('editor');
+      const date = new Date().toLocaleDateString('en-US');
+      editor.focus();
+      document.execCommand('insertText', false, `--- ${date} Section ---\n`);
+    }
+
+    function applyColor(color) {
+      const selection = window.getSelection();
+      if (selection.toString().length === 0) {
+        alert("Please select text first!");
+        return;
+      }
+      document.execCommand('foreColor', false, color);
+    }
+
+    function applyBold() {
+      document.execCommand('bold', false, null);
+    }
+
+    function applyItalic() {
+      document.execCommand('italic', false, null);
+    }
+
+    function removeFormat() {
+      document.execCommand('removeFormat', false, null);
+    }
+
     function showCompare() {
       document.getElementById('compareModal').style.display = 'block';
       db.ref('notes/Zawad').once('value', s => {
-        document.getElementById('zawadText').textContent = s.val() ? (s.val().html || s.val().text || "(Empty)") : "(Empty)";
+        if (s.val()) {
+          document.getElementById('zawadText').innerHTML = s.val().html || "(Empty)";
+        } else {
+          document.getElementById('zawadText').innerHTML = "(Empty)";
+        }
       });
       db.ref('notes/Ridwan').once('value', s => {
-        document.getElementById('ridwanText').textContent = s.val() ? (s.val().html || s.val().text || "(Empty)") : "(Empty)";
+        if (s.val()) {
+          document.getElementById('ridwanText').innerHTML = s.val().html || "(Empty)";
+        } else {
+          document.getElementById('ridwanText').innerHTML = "(Empty)";
+        }
       });
     }
 
-    function hideCompare() { document.getElementById('compareModal').style.display = 'none'; }
-    function showCalculator() { document.getElementById('calcModal').style.display = 'block'; }
-    function hideCalculator() { document.getElementById('calcModal').style.display = 'none'; }
+    function hideCompare() {
+      document.getElementById('compareModal').style.display = 'none';
+    }
+
+    function showCalculator() {
+      document.getElementById('calcModal').style.display = 'block';
+    }
+
+    function hideCalculator() {
+      document.getElementById('calcModal').style.display = 'none';
+    }
 
     function autoCalculate() {
       const resultDiv = document.getElementById('calcResult');
@@ -321,26 +346,27 @@
         let summary = {};
 
         Object.keys(data).forEach(user => {
-          let text = "";
-          if (data[user].html) {
-            const temp = document.createElement('div');
-            temp.innerHTML = data[user].html;
-            text = temp.textContent || "";
-          } else text = data[user].text || "";
-          
+          const html = data[user].html || "";
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = html;
+          const text = tempDiv.textContent || tempDiv.innerText || "";
           const lines = text.split('\n');
+          
           lines.forEach(line => {
             const match = line.match(/(\w+)\s*[-:]\s*(\d+\.?\d*)/i);
             if (match) {
               const name = match[1].trim().toLowerCase();
               const amount = parseFloat(match[2]);
-              if (!isNaN(amount)) summary[name] = (summary[name] || 0) + amount;
+              if (!isNaN(amount)) {
+                summary[name] = (summary[name] || 0) + amount;
+              }
             }
           });
         });
 
         let html = `<strong>Calculation Result:</strong><br><br>`;
         let grandTotal = 0;
+
         Object.keys(summary).sort().forEach(name => {
           html += `${name}: ${summary[name]}<br>`;
           grandTotal += summary[name];
@@ -348,9 +374,16 @@
 
         html += `<br><b>Grand Total = ${grandTotal}</b><br>`;
         html += `<b>Total ÷ 2 = ${(grandTotal / 2).toFixed(2)}</b>`;
+
         resultDiv.innerHTML = html;
       });
     }
+
+    window.addEventListener('load', () => {
+      if (!isLoggedIn) {
+        document.getElementById('loginScreen').classList.remove('hidden');
+      }
+    });
   </script>
 </body>
 </html>
