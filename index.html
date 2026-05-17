@@ -171,6 +171,7 @@
     let currentIP = "Unknown";
     let isLoggedIn = false;
     let isLoading = false;
+    let isUserTyping = false; // FIX: Track if user is actively typing
 
     function updateCurrentDate() {
       const options = { weekday:'short', month:'short', day:'numeric', year:'numeric' };
@@ -219,9 +220,10 @@
     function loadNote() {
       const editor = document.getElementById('editor');
       db.ref('notes/' + currentUser).on('value', (snap) => {
-        if (snap.val()) {
+        // FIX: Only update if user is NOT currently typing
+        if (!isUserTyping && snap.val()) {
           editor.innerHTML = snap.val().html || '';
-        } else {
+        } else if (!isUserTyping && !snap.val()) {
           editor.innerHTML = '';
         }
       });
@@ -249,10 +251,14 @@
     }
 
     let saveTimeout;
-    document.getElementById('editor').addEventListener('input', () => {
+    const editor = document.getElementById('editor');
+
+    // FIX: Set flag when user starts typing
+    editor.addEventListener('input', () => {
+      isUserTyping = true;
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
-        const html = document.getElementById('editor').innerHTML;
+        const html = editor.innerHTML;
         db.ref('notes/' + currentUser).set({
           html: html,
           lastEditedBy: currentUser,
@@ -265,7 +271,14 @@
           action: "Edited note",
           timestamp: Date.now()
         });
+
+        isUserTyping = false; // FIX: Reset flag after saving
       }, 500);
+    });
+
+    // FIX: Also reset flag on blur
+    editor.addEventListener('blur', () => {
+      isUserTyping = false;
     });
 
     function toggleSidebar() {
@@ -350,16 +363,23 @@
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = html;
           const text = tempDiv.textContent || tempDiv.innerText || "";
-          const lines = text.split('\n');
           
+          // FIX: Improved regex to match various formats like "item: 100", "item - 50", "item 25"
+          const lines = text.split('\n');
           lines.forEach(line => {
-            const match = line.match(/(\w+)\s*[-:]\s*(\d+\.?\d*)/i);
-            if (match) {
-              const name = match[1].trim().toLowerCase();
-              const amount = parseFloat(match[2]);
-              if (!isNaN(amount)) {
-                summary[name] = (summary[name] || 0) + amount;
-              }
+            // Match patterns like: "item: 100", "item - 50", "item 50", "item:50"
+            const matches = line.match(/([a-zA-Z\s]+)[-:]*\s*(\d+\.?\d*)/g);
+            if (matches) {
+              matches.forEach(match => {
+                const parts = match.match(/([a-zA-Z\s]+)[-:]*\s*(\d+\.?\d*)/);
+                if (parts && parts.length >= 3) {
+                  const name = parts[1].trim().toLowerCase();
+                  const amount = parseFloat(parts[2]);
+                  if (name && !isNaN(amount)) {
+                    summary[name] = (summary[name] || 0) + amount;
+                  }
+                }
+              });
             }
           });
         });
@@ -367,13 +387,17 @@
         let html = `<strong>Calculation Result:</strong><br><br>`;
         let grandTotal = 0;
 
-        Object.keys(summary).sort().forEach(name => {
-          html += `${name}: ${summary[name]}<br>`;
-          grandTotal += summary[name];
-        });
+        if (Object.keys(summary).length === 0) {
+          html += `<span style="color:red;">No data found. Make sure entries follow format: "item: amount" or "item - amount"</span>`;
+        } else {
+          Object.keys(summary).sort().forEach(name => {
+            html += `<strong>${name}:</strong> ${summary[name].toFixed(2)}<br>`;
+            grandTotal += summary[name];
+          });
 
-        html += `<br><b>Grand Total = ${grandTotal}</b><br>`;
-        html += `<b>Total ÷ 2 = ${(grandTotal / 2).toFixed(2)}</b>`;
+          html += `<br><b style="font-size:18px; color:#0066cc;">Grand Total = ${grandTotal.toFixed(2)}</b><br>`;
+          html += `<b style="font-size:18px; color:#0066cc;">Total ÷ 2 = ${(grandTotal / 2).toFixed(2)}</b>`;
+        }
 
         resultDiv.innerHTML = html;
       });
