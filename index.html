@@ -102,7 +102,7 @@
           <button onclick="removeFormat()" style="background:#cc0000; color:white;">Clear Format</button>
         </div>
 
-        <div id="editor" contenteditable="true" style="flex:1; padding:15px; font-size:17px; border:1px solid #ccc; border-radius:8px; background:white; overflow-y:auto; line-height: 1.6;" placeholder="Start typing..."></div>
+        <div id="editor" contenteditable="true" style="flex:1; padding:15px; font-size:17px; border:1px solid #ccc; border-radius:8px; background:white; overflow-y:auto; line-height: 1.6;" placeholder[...]
         
         <div style="margin-top:10px;">
           <button onclick="showCompare()">🔄 Compare Notes</button>
@@ -136,16 +136,16 @@
   </div>
 
   <!-- Calculator Modal -->
-  <div id="calcModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; padding:15px;">
-    <div style="background:white; max-width:700px; margin:auto; border-radius:10px; padding:20px;">
+  <div id="calcModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; padding:15px; overflow-y:auto;">
+    <div style="background:white; max-width:700px; margin:auto; border-radius:10px; padding:20px; min-height:auto;">
       <h2>🧮 Calculator</h2>
       <button onclick="hideCalculator()" style="float:right;">Close</button><br><br>
 
       <label>From Date:</label><br>
-      <input type="date" id="fromDate" style="width:100%; padding:10px; margin:8px 0;"><br>
+      <input type="date" id="fromDate" style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;"><br>
 
       <label>To Date:</label><br>
-      <input type="date" id="toDate" style="width:100%; padding:10px; margin:8px 0;">
+      <input type="date" id="toDate" style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;">
 
       <button onclick="autoCalculate()" style="background:#0066cc; color:white; width:100%; padding:12px; margin-top:15px;">Calculate from Date Range</button>
       
