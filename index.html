@@ -12,7 +12,13 @@
     body { font-family: Arial, sans-serif; background:#f0f2f5; }
     .header { background:#0066cc; color:white; padding:15px; text-align:center; font-size:20px; position:relative; }
     .container { display:flex; height:calc(100vh - 120px); }
-    .editor-area { flex:1; padding:15px; display:flex; flex-direction:column; }
+    .editor-area { 
+      flex:1; 
+      padding:15px; 
+      display:flex; 
+      flex-direction:column; 
+      overflow:hidden;
+    }
     .sidebar { width:380px; background:white; border-left:1px solid #ddd; transition:0.4s; }
     .sidebar.minimized { width:55px; }
     
@@ -27,6 +33,7 @@
       background:white;
       overflow-y:auto;
       line-height: 1.6;
+      min-height:200px;
     }
     
     #editor:focus { outline:none; border-color:#0066cc; }
@@ -40,6 +47,18 @@
     .toolbar { background:#e8e8e8; padding:12px; border-radius:8px; margin-bottom:10px; display:flex; flex-wrap:wrap; gap:5px; }
     .toolbar button { padding:8px 12px; font-size:14px; }
     .color-btn { width:40px; height:40px; padding:0; margin:4px; border:none; border-radius:4px; cursor:pointer; border:2px solid #999; }
+
+    .button-container { 
+      margin-top:10px; 
+      display:flex; 
+      gap:10px; 
+      flex-shrink:0;
+    }
+    .button-container button { 
+      flex:1; 
+      margin:0; 
+      padding:12px 14px;
+    }
 
     #loginScreen, #nameScreen { position:fixed; top:0; left:0; width:100%; height:100%; background:#f0f2f5; display:flex; align-items:center; justify-content:center; z-index:9999; }
     #loginScreen.hidden, #nameScreen.hidden { display:none; }
@@ -102,9 +121,9 @@
           <button onclick="removeFormat()" style="background:#cc0000; color:white;">Clear Format</button>
         </div>
 
-        <div id="editor" contenteditable="true" style="flex:1; padding:15px; font-size:17px; border:1px solid #ccc; border-radius:8px; background:white; overflow-y:auto; line-height: 1.6;" placeholder[...]
+        <div id="editor" contenteditable="true" placeholder="Start typing..."></div>
         
-        <div style="margin-top:10px;">
+        <div class="button-container">
           <button onclick="showCompare()">🔄 Compare Notes</button>
           <button onclick="showCalculator()">🧮 Calculator</button>
         </div>
@@ -171,7 +190,7 @@
     let currentIP = "Unknown";
     let isLoggedIn = false;
     let isLoading = false;
-    let isUserTyping = false; // FIX: Track if user is actively typing
+    let isUserTyping = false;
 
     function updateCurrentDate() {
       const options = { weekday:'short', month:'short', day:'numeric', year:'numeric' };
@@ -220,7 +239,6 @@
     function loadNote() {
       const editor = document.getElementById('editor');
       db.ref('notes/' + currentUser).on('value', (snap) => {
-        // FIX: Only update if user is NOT currently typing
         if (!isUserTyping && snap.val()) {
           editor.innerHTML = snap.val().html || '';
         } else if (!isUserTyping && !snap.val()) {
@@ -253,7 +271,6 @@
     let saveTimeout;
     const editor = document.getElementById('editor');
 
-    // FIX: Set flag when user starts typing
     editor.addEventListener('input', () => {
       isUserTyping = true;
       clearTimeout(saveTimeout);
@@ -272,11 +289,10 @@
           timestamp: Date.now()
         });
 
-        isUserTyping = false; // FIX: Reset flag after saving
+        isUserTyping = false;
       }, 500);
     });
 
-    // FIX: Also reset flag on blur
     editor.addEventListener('blur', () => {
       isUserTyping = false;
     });
@@ -364,10 +380,8 @@
           tempDiv.innerHTML = html;
           const text = tempDiv.textContent || tempDiv.innerText || "";
           
-          // FIX: Improved regex to match various formats like "item: 100", "item - 50", "item 25"
           const lines = text.split('\n');
           lines.forEach(line => {
-            // Match patterns like: "item: 100", "item - 50", "item 50", "item:50"
             const matches = line.match(/([a-zA-Z\s]+)[-:]*\s*(\d+\.?\d*)/g);
             if (matches) {
               matches.forEach(match => {
