@@ -137,6 +137,37 @@
       font-size:14px;
       resize:vertical;
     }
+
+    /* Zoom Control Styles */
+    .zoom-control {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:#fff;
+      padding:8px 12px;
+      border-radius:6px;
+      border:1px solid #ddd;
+    }
+
+    .zoom-control button {
+      padding:6px 10px;
+      font-size:12px;
+      margin:0;
+      background:#0066cc;
+      color:white;
+      border:none;
+    }
+
+    .zoom-control button:hover {
+      background:#0052a3;
+    }
+
+    #zoomDisplay {
+      font-weight:bold;
+      color:#0066cc;
+      min-width:50px;
+      text-align:center;
+    }
   </style>
 </head>
 <body>
@@ -189,6 +220,14 @@
           <button onclick="applyBold()" style="background:#0066cc; color:white; font-weight:bold;">B</button>
           <button onclick="applyItalic()" style="background:#0066cc; color:white; font-style:italic;">I</button>
           <button onclick="removeFormat()" style="background:#cc0000; color:white;">Clear Format</button>
+          
+          <!-- Zoom Control -->
+          <div class="zoom-control">
+            <button onclick="decreaseZoom()" title="Decrease Size (Ctrl+Minus)">➖</button>
+            <span id="zoomDisplay">100%</span>
+            <button onclick="increaseZoom()" title="Increase Size (Ctrl+Plus)">➕</button>
+            <button onclick="resetZoom()" style="background:#868e96;" title="Reset">↺</button>
+          </div>
         </div>
 
         <div id="editor" contenteditable="true" placeholder="Start typing..."></div>
@@ -305,6 +344,12 @@
     let currentGrandTotal = 0;
     let originalGrandTotal = 0;
     let isPastDataCollapsed = true;
+    
+    // Zoom state
+    let currentZoom = 100;
+    const minZoom = 50;
+    const maxZoom = 300;
+    const zoomStep = 10;
 
     function updateCurrentDate() {
       const options = { weekday:'short', month:'short', day:'numeric', year:'numeric' };
@@ -348,6 +393,7 @@
       
       loadNote();
       loadPastData();
+      loadZoomLevel();
       isLoading = false;
     }
 
@@ -393,6 +439,71 @@
         }
       });
     }
+
+    // Zoom Functions
+    function loadZoomLevel() {
+      const savedZoom = localStorage.getItem('notepadZoom');
+      if (savedZoom) {
+        currentZoom = parseInt(savedZoom);
+        applyZoom();
+      }
+    }
+
+    function applyZoom() {
+      const editor = document.getElementById('editor');
+      const editorArea = document.querySelector('.editor-area h3');
+      const toolbar = document.querySelector('.toolbar');
+      
+      const scaleFactor = currentZoom / 100;
+      
+      editor.style.fontSize = (17 * scaleFactor) + 'px';
+      if (editorArea) {
+        editorArea.style.fontSize = (16 * scaleFactor) + 'px';
+      }
+      if (toolbar) {
+        toolbar.style.fontSize = (14 * scaleFactor) + 'px';
+      }
+      
+      document.getElementById('zoomDisplay').textContent = currentZoom + '%';
+      localStorage.setItem('notepadZoom', currentZoom);
+    }
+
+    function increaseZoom() {
+      if (currentZoom < maxZoom) {
+        currentZoom += zoomStep;
+        if (currentZoom > maxZoom) currentZoom = maxZoom;
+        applyZoom();
+      }
+    }
+
+    function decreaseZoom() {
+      if (currentZoom > minZoom) {
+        currentZoom -= zoomStep;
+        if (currentZoom < minZoom) currentZoom = minZoom;
+        applyZoom();
+      }
+    }
+
+    function resetZoom() {
+      currentZoom = 100;
+      applyZoom();
+    }
+
+    // Keyboard shortcuts for zoom
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          increaseZoom();
+        } else if (e.key === '-') {
+          e.preventDefault();
+          decreaseZoom();
+        } else if (e.key === '0') {
+          e.preventDefault();
+          resetZoom();
+        }
+      }
+    });
 
     let saveTimeout;
     const editor = document.getElementById('editor');
