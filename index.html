@@ -67,6 +67,15 @@
     .login-card h1, .name-card h2 { margin-bottom:20px; }
     .login-card input { padding:12px; width:280px; font-size:17px; margin:10px 0; border:1px solid #ccc; border-radius:6px; }
     .login-card button, .name-card button { padding:12px 30px; margin:10px; font-size:16px; background:#0066cc; color:white; border:none; border-radius:6px; cursor:pointer; }
+    
+    .calc-tabs { display:flex; gap:10px; margin-bottom:15px; border-bottom:2px solid #ddd; }
+    .calc-tab { padding:10px 15px; cursor:pointer; background:none; border:none; font-weight:bold; color:#666; border-bottom:3px solid transparent; }
+    .calc-tab.active { color:#0066cc; border-bottom-color:#0066cc; }
+    
+    .calc-tab-content { display:none; }
+    .calc-tab-content.active { display:block; }
+    
+    #pasteArea { width:100%; height:150px; padding:10px; border:1px solid #ccc; border-radius:5px; font-family:monospace; font-size:14px; resize:vertical; }
   </style>
 </head>
 <body>
@@ -160,15 +169,33 @@
       <h2>🧮 Calculator</h2>
       <button onclick="hideCalculator()" style="float:right;">Close</button><br><br>
 
-      <label>From Date:</label><br>
-      <input type="date" id="fromDate" style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;"><br>
+      <div class="calc-tabs">
+        <button class="calc-tab active" onclick="switchCalcTab('date')">📅 Date Range</button>
+        <button class="calc-tab" onclick="switchCalcTab('paste')">📋 Paste & Calculate</button>
+      </div>
 
-      <label>To Date:</label><br>
-      <input type="date" id="toDate" style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;">
+      <!-- Date Range Tab -->
+      <div id="dateTab" class="calc-tab-content active">
+        <label>From Date:</label><br>
+        <input type="date" id="fromDate" style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;"><br>
 
-      <button onclick="autoCalculate()" style="background:#0066cc; color:white; width:100%; padding:12px; margin-top:15px;">Calculate from Date Range</button>
-      
-      <div id="calcResult" style="margin-top:20px; font-size:18px; line-height:1.8; overflow-y:auto; flex:1; padding:10px; background:#f9f9f9; border-radius:5px;"></div>
+        <label>To Date:</label><br>
+        <input type="date" id="toDate" style="width:100%; padding:10px; margin:8px 0; box-sizing:border-box;">
+
+        <button onclick="autoCalculate()" style="background:#0066cc; color:white; width:100%; padding:12px; margin-top:15px;">Calculate from Date Range</button>
+        
+        <div id="calcResult" style="margin-top:20px; font-size:18px; line-height:1.8; overflow-y:auto; flex:1; padding:10px; background:#f9f9f9; border-radius:5px;"></div>
+      </div>
+
+      <!-- Paste & Calculate Tab -->
+      <div id="pasteTab" class="calc-tab-content">
+        <label>Paste your text here (format: "item: amount" or "item - amount"):</label><br>
+        <textarea id="pasteArea" placeholder="Example:&#10;Coffee: 50&#10;Lunch - 150&#10;Transport 30"></textarea>
+
+        <button onclick="calculateFromPaste()" style="background:#0066cc; color:white; width:100%; padding:12px; margin-top:15px;">Calculate from Pasted Text</button>
+        
+        <div id="pasteResult" style="margin-top:20px; font-size:18px; line-height:1.8; overflow-y:auto; flex:1; padding:10px; background:#f9f9f9; border-radius:5px;"></div>
+      </div>
     </div>
   </div>
 
@@ -366,6 +393,22 @@
       document.getElementById('calcModal').style.display = 'none';
     }
 
+    function switchCalcTab(tab) {
+      const tabs = document.querySelectorAll('.calc-tab');
+      const contents = document.querySelectorAll('.calc-tab-content');
+      
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      
+      if (tab === 'date') {
+        document.getElementById('dateTab').classList.add('active');
+      } else {
+        document.getElementById('pasteTab').classList.add('active');
+      }
+    }
+
     function autoCalculate() {
       const resultDiv = document.getElementById('calcResult');
       resultDiv.innerHTML = "Reading data...";
@@ -415,6 +458,52 @@
 
         resultDiv.innerHTML = html;
       });
+    }
+
+    function calculateFromPaste() {
+      const pasteText = document.getElementById('pasteArea').value;
+      const resultDiv = document.getElementById('pasteResult');
+
+      if (!pasteText.trim()) {
+        resultDiv.innerHTML = `<span style="color:red;">Please paste some text first!</span>`;
+        return;
+      }
+
+      let summary = {};
+      const lines = pasteText.split('\n');
+
+      lines.forEach(line => {
+        const matches = line.match(/([a-zA-Z\s]+)[-:]*\s*(\d+\.?\d*)/g);
+        if (matches) {
+          matches.forEach(match => {
+            const parts = match.match(/([a-zA-Z\s]+)[-:]*\s*(\d+\.?\d*)/);
+            if (parts && parts.length >= 3) {
+              const name = parts[1].trim().toLowerCase();
+              const amount = parseFloat(parts[2]);
+              if (name && !isNaN(amount)) {
+                summary[name] = (summary[name] || 0) + amount;
+              }
+            }
+          });
+        }
+      });
+
+      let html = `<strong>Calculation Result:</strong><br><br>`;
+      let grandTotal = 0;
+
+      if (Object.keys(summary).length === 0) {
+        html += `<span style="color:red;">No data found. Make sure entries follow format: "item: amount" or "item - amount"</span>`;
+      } else {
+        Object.keys(summary).sort().forEach(name => {
+          html += `<strong>${name}:</strong> ${summary[name].toFixed(2)}<br>`;
+          grandTotal += summary[name];
+        });
+
+        html += `<br><b style="font-size:18px; color:#0066cc;">Grand Total = ${grandTotal.toFixed(2)}</b><br>`;
+        html += `<b style="font-size:18px; color:#0066cc;">Total ÷ 2 = ${(grandTotal / 2).toFixed(2)}</b>`;
+      }
+
+      resultDiv.innerHTML = html;
     }
 
     window.addEventListener('load', () => {
