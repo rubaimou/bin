@@ -77,9 +77,15 @@
     
     #pasteArea { width:100%; height:150px; padding:10px; border:1px solid #ccc; border-radius:5px; font-family:monospace; font-size:14px; resize:vertical; }
     
-    .adjustment-container { display:flex; gap:10px; margin-top:15px; align-items:center; }
+    .adjustment-container { display:flex; gap:10px; margin-top:15px; align-items:center; flex-wrap: wrap; }
     .adjustment-container input { padding:8px 12px; border:1px solid #ccc; border-radius:5px; font-size:14px; width:100px; }
     .adjustment-container button { padding:8px 14px; margin:0; }
+    
+    .item-adjustment { display:flex; gap:8px; align-items:center; margin-top:10px; padding:10px; background:#f5f5f5; border-radius:5px; }
+    .item-adjustment label { font-weight:bold; min-width:150px; }
+    .item-adjustment input { padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; width:80px; }
+    .item-adjustment button { padding:6px 12px; margin:0; font-size:13px; }
+    .item-adjustment small { color:#666; }
   </style>
 </head>
 <body>
@@ -193,15 +199,18 @@
 
       <!-- Paste & Calculate Tab -->
       <div id="pasteTab" class="calc-tab-content">
-        <label>Paste your text here (format: "item: amount" or "item - amount"):</label><br>
-        <textarea id="pasteArea" placeholder="Example:&#10;Coffee: 50&#10;Lunch - 150&#10;Transport 30"></textarea>
+        <label>Paste your text here (format: "item: amount" or "item - amount" or "item: 0.79 + 5 - 10/2"):</label><br>
+        <textarea id="pasteArea" placeholder="Example:&#10;Coffee: 50&#10;Lunch - 150&#10;Transport 30&#10;Sakil: 0.79 + 5 - 10/2"></textarea>
 
         <button onclick="calculateFromPaste()" style="background:#0066cc; color:white; width:100%; padding:12px; margin-top:15px;">Calculate from Pasted Text</button>
         
         <div id="pasteResult" style="margin-top:20px; font-size:18px; line-height:1.8; overflow-y:auto; flex:1; padding:10px; background:#f9f9f9; border-radius:5px;"></div>
 
-        <!-- Adjustment Controls -->
-        <div class="adjustment-container">
+        <!-- Item-wise Adjustment Controls -->
+        <div id="itemAdjustments" style="margin-top:15px;"></div>
+
+        <!-- Global Adjustment Controls -->
+        <div class="adjustment-container" style="margin-top:15px; border-top:2px solid #ddd; padding-top:15px;">
           <button onclick="adjustTotal(-5)" style="background:#ff6b6b; color:white;">➖ -5</button>
           <button onclick="adjustTotal(-1)" style="background:#ff8787; color:white;">➖ -1</button>
           <input type="number" id="customAmount" placeholder="Custom amount" step="0.01">
@@ -235,6 +244,8 @@
     let isUserTyping = false;
     let currentGrandTotal = 0;
     let originalGrandTotal = 0;
+    let itemAdjustments = {}; // Store per-item adjustments
+    let originalItemValues = {}; // Store original values for reset
 
     function updateCurrentDate() {
       const options = { weekday:'short', month:'short', day:'numeric', year:'numeric' };
@@ -477,40 +488,81 @@
       });
     }
 
+    // Safe expression evaluator for mathematical expressions
+    function safeEval(expression) {
+      // Remove whitespace
+      expression = expression.replace(/\s/g, '');
+      
+      // Validate expression contains only numbers, operators, and parentheses
+      if (!/^[\d+\-*/().,]+$/.test(expression)) {
+        throw new Error("Invalid characters in expression");
+      }
+      
+      try {
+        // Use Function constructor instead of eval for safer evaluation
+        const result = Function('"use strict"; return (' + expression + ')')();
+        return result;
+      } catch (e) {
+        throw new Error("Invalid mathematical expression: " + e.message);
+      }
+    }
+
+    // Parse individual item with support for mathematical expressions
+    function parseItemWithExpression(line) {
+      // Match: "name: expression" or "name - expression"
+      const match = line.match(/^([a-zA-Z\s]+?)[-:]\s*(.+)$/);
+      
+      if (!match) {
+        return null;
+      }
+      
+      const name = match[1].trim().toLowerCase();
+      const expression = match[2].trim();
+      
+      try {
+        const value = safeEval(expression);
+        if (isNaN(value)) {
+          return null;
+        }
+        return { name, value: parseFloat(value) };
+      } catch (e) {
+        console.warn(`Error parsing "${line}": ${e.message}`);
+        return null;
+      }
+    }
+
     function calculateFromPaste() {
       const pasteText = document.getElementById('pasteArea').value;
       const resultDiv = document.getElementById('pasteResult');
+      const adjustmentsDiv = document.getElementById('itemAdjustments');
       document.getElementById('customAmount').value = '';
 
       if (!pasteText.trim()) {
         resultDiv.innerHTML = `<span style="color:red;">Please paste some text first!</span>`;
+        adjustmentsDiv.innerHTML = '';
         return;
       }
 
       let summary = {};
-      const lines = pasteText.split('\n');
+      const lines = pasteText.split('\n').filter(l => l.trim());
 
       lines.forEach(line => {
-        const matches = line.match(/([a-zA-Z\s]+)[-:]*\s*(\d+\.?\d*)/g);
-        if (matches) {
-          matches.forEach(match => {
-            const parts = match.match(/([a-zA-Z\s]+)[-:]*\s*(\d+\.?\d*)/);
-            if (parts && parts.length >= 3) {
-              const name = parts[1].trim().toLowerCase();
-              const amount = parseFloat(parts[2]);
-              if (name && !isNaN(amount)) {
-                summary[name] = (summary[name] || 0) + amount;
-              }
-            }
-          });
+        const parsed = parseItemWithExpression(line);
+        if (parsed) {
+          summary[parsed.name] = (summary[parsed.name] || 0) + parsed.value;
         }
       });
+
+      // Store original values
+      originalItemValues = JSON.parse(JSON.stringify(summary));
+      itemAdjustments = {};
 
       let html = `<strong>Calculation Result:</strong><br><br>`;
       let grandTotal = 0;
 
       if (Object.keys(summary).length === 0) {
-        html += `<span style="color:red;">No data found. Make sure entries follow format: "item: amount" or "item - amount"</span>`;
+        html += `<span style="color:red;">No data found. Make sure entries follow format: "item: amount" or "item - amount" or "item: 0.79 + 5 - 10/2"</span>`;
+        adjustmentsDiv.innerHTML = '';
       } else {
         Object.keys(summary).sort().forEach(name => {
           html += `<strong>${name}:</strong> ${summary[name].toFixed(2)}<br>`;
@@ -519,11 +571,49 @@
 
         html += `<br><b style="font-size:18px; color:#0066cc;">Grand Total = ${grandTotal.toFixed(2)}</b><br>`;
         html += `<b style="font-size:18px; color:#0066cc;">Total ÷ 2 = ${(grandTotal / 2).toFixed(2)}</b>`;
+
+        // Create item-wise adjustment controls
+        adjustmentsDiv.innerHTML = '<h4 style="margin-top:15px; margin-bottom:10px;">⚙️ Adjust Individual Items:</h4>';
+        Object.keys(summary).sort().forEach(name => {
+          const div = document.createElement('div');
+          div.className = 'item-adjustment';
+          div.innerHTML = `
+            <label>${name}:</label>
+            <button onclick="adjustItem('${name}', -1)" style="background:#ff8787; color:white;">-</button>
+            <input type="number" id="adj_${name}" placeholder="0" value="0" step="0.01" onchange="updateItemAdjustment('${name}')">
+            <button onclick="adjustItem('${name}', 1)" style="background:#69db7c; color:white;">+</button>
+            <small id="info_${name}"></small>
+          `;
+          adjustmentsDiv.appendChild(div);
+          updateItemInfo(name);
+        });
       }
 
       currentGrandTotal = grandTotal;
       originalGrandTotal = grandTotal;
       resultDiv.innerHTML = html;
+    }
+
+    function adjustItem(itemName, amount) {
+      const input = document.getElementById(`adj_${itemName}`);
+      const current = parseFloat(input.value) || 0;
+      input.value = (current + amount).toFixed(2);
+      updateItemAdjustment(itemName);
+    }
+
+    function updateItemAdjustment(itemName) {
+      const input = document.getElementById(`adj_${itemName}`);
+      const adjustment = parseFloat(input.value) || 0;
+      itemAdjustments[itemName] = adjustment;
+      updatePasteResult();
+    }
+
+    function updateItemInfo(itemName) {
+      const original = originalItemValues[itemName] || 0;
+      const adjustment = itemAdjustments[itemName] || 0;
+      const current = original + adjustment;
+      const diff = adjustment !== 0 ? ` (${adjustment > 0 ? '+' : ''}${adjustment.toFixed(2)})` : '';
+      document.getElementById(`info_${itemName}`).textContent = `Original: ${original.toFixed(2)}${diff}`;
     }
 
     function adjustTotal(amount) {
@@ -545,7 +635,18 @@
 
     function resetCalculation() {
       currentGrandTotal = originalGrandTotal;
+      itemAdjustments = {};
       document.getElementById('customAmount').value = '';
+      
+      // Reset all item adjustment inputs
+      Object.keys(originalItemValues).forEach(name => {
+        const input = document.getElementById(`adj_${name}`);
+        if (input) {
+          input.value = '0';
+          updateItemInfo(name);
+        }
+      });
+      
       updatePasteResult();
     }
 
@@ -556,16 +657,32 @@
       if (originalGrandTotal === 0) {
         html += `<span style="color:red;">No data found.</span>`;
       } else {
-        html += `<b style="font-size:18px; color:#0066cc;">Adjusted Total = ${currentGrandTotal.toFixed(2)}</b><br>`;
-        html += `<b style="font-size:18px; color:#0066cc;">Total ÷ 2 = ${(currentGrandTotal / 2).toFixed(2)}</b><br>`;
-        if (currentGrandTotal !== originalGrandTotal) {
-          const diff = currentGrandTotal - originalGrandTotal;
+        // Calculate adjusted total with item-wise adjustments
+        let itemTotal = 0;
+        Object.keys(originalItemValues).forEach(name => {
+          const original = originalItemValues[name] || 0;
+          const adjustment = itemAdjustments[name] || 0;
+          itemTotal += original + adjustment;
+        });
+        
+        const displayTotal = itemTotal + (currentGrandTotal - originalGrandTotal);
+        
+        html += `<b style="font-size:18px; color:#0066cc;">Adjusted Total = ${displayTotal.toFixed(2)}</b><br>`;
+        html += `<b style="font-size:18px; color:#0066cc;">Total ÷ 2 = ${(displayTotal / 2).toFixed(2)}</b><br>`;
+        
+        if (currentGrandTotal !== originalGrandTotal || Object.keys(itemAdjustments).some(k => itemAdjustments[k] !== 0)) {
+          const diff = displayTotal - originalGrandTotal;
           const sign = diff > 0 ? '+' : '';
           html += `<small style="color:#666;">Original: ${originalGrandTotal.toFixed(2)} (${sign}${diff.toFixed(2)})</small>`;
         }
       }
 
       resultDiv.innerHTML = html;
+      
+      // Update all item info displays
+      Object.keys(originalItemValues).forEach(name => {
+        updateItemInfo(name);
+      });
     }
 
     window.addEventListener('load', () => {
