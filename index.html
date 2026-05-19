@@ -301,6 +301,7 @@
     let isLoggedIn = false;
     let isLoading = false;
     let isUserTyping = false;
+    let isPastDataTyping = false;
     let currentGrandTotal = 0;
     let originalGrandTotal = 0;
     let isPastDataCollapsed = true;
@@ -346,6 +347,7 @@
       updateCurrentDate();
       
       loadNote();
+      loadPastData();
       isLoading = false;
     }
 
@@ -381,6 +383,17 @@
       });
     }
 
+    function loadPastData() {
+      const pastDataTextarea = document.getElementById('pastDataTextarea');
+      db.ref('pastData/' + currentUser).on('value', (snap) => {
+        if (!isPastDataTyping && snap.val()) {
+          pastDataTextarea.value = snap.val().text || '';
+        } else if (!isPastDataTyping && !snap.val()) {
+          pastDataTextarea.value = '';
+        }
+      });
+    }
+
     let saveTimeout;
     const editor = document.getElementById('editor');
 
@@ -408,6 +421,36 @@
 
     editor.addEventListener('blur', () => {
       isUserTyping = false;
+    });
+
+    // Past Data Auto-save
+    let pastDataSaveTimeout;
+    const pastDataTextarea = document.getElementById('pastDataTextarea');
+
+    pastDataTextarea.addEventListener('input', () => {
+      isPastDataTyping = true;
+      clearTimeout(pastDataSaveTimeout);
+      pastDataSaveTimeout = setTimeout(() => {
+        const text = pastDataTextarea.value;
+        db.ref('pastData/' + currentUser).set({
+          text: text,
+          lastEditedBy: currentUser,
+          lastEditedAt: Date.now()
+        });
+
+        db.ref('history').push({
+          user: currentUser,
+          ip: currentIP,
+          action: "Edited past data",
+          timestamp: Date.now()
+        });
+
+        isPastDataTyping = false;
+      }, 500);
+    });
+
+    pastDataTextarea.addEventListener('blur', () => {
+      isPastDataTyping = false;
     });
 
     function toggleSidebar() {
