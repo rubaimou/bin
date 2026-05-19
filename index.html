@@ -76,6 +76,10 @@
     .calc-tab-content.active { display:block; }
     
     #pasteArea { width:100%; height:150px; padding:10px; border:1px solid #ccc; border-radius:5px; font-family:monospace; font-size:14px; resize:vertical; }
+    
+    .adjustment-container { display:flex; gap:10px; margin-top:15px; align-items:center; }
+    .adjustment-container input { padding:8px 12px; border:1px solid #ccc; border-radius:5px; font-size:14px; width:100px; }
+    .adjustment-container button { padding:8px 14px; margin:0; }
   </style>
 </head>
 <body>
@@ -195,6 +199,17 @@
         <button onclick="calculateFromPaste()" style="background:#0066cc; color:white; width:100%; padding:12px; margin-top:15px;">Calculate from Pasted Text</button>
         
         <div id="pasteResult" style="margin-top:20px; font-size:18px; line-height:1.8; overflow-y:auto; flex:1; padding:10px; background:#f9f9f9; border-radius:5px;"></div>
+
+        <!-- Adjustment Controls -->
+        <div class="adjustment-container">
+          <button onclick="adjustTotal(-5)" style="background:#ff6b6b; color:white;">➖ -5</button>
+          <button onclick="adjustTotal(-1)" style="background:#ff8787; color:white;">➖ -1</button>
+          <input type="number" id="customAmount" placeholder="Custom amount" step="0.01">
+          <button onclick="adjustCustom()" style="background:#0066cc; color:white;">Add</button>
+          <button onclick="adjustTotal(1)" style="background:#69db7c; color:white;">➕ +1</button>
+          <button onclick="adjustTotal(5)" style="background:#51cf66; color:white;">➕ +5</button>
+          <button onclick="resetCalculation()" style="background:#868e96; color:white;">Reset</button>
+        </div>
       </div>
     </div>
   </div>
@@ -218,6 +233,8 @@
     let isLoggedIn = false;
     let isLoading = false;
     let isUserTyping = false;
+    let currentGrandTotal = 0;
+    let originalGrandTotal = 0;
 
     function updateCurrentDate() {
       const options = { weekday:'short', month:'short', day:'numeric', year:'numeric' };
@@ -463,6 +480,7 @@
     function calculateFromPaste() {
       const pasteText = document.getElementById('pasteArea').value;
       const resultDiv = document.getElementById('pasteResult');
+      document.getElementById('customAmount').value = '';
 
       if (!pasteText.trim()) {
         resultDiv.innerHTML = `<span style="color:red;">Please paste some text first!</span>`;
@@ -501,6 +519,50 @@
 
         html += `<br><b style="font-size:18px; color:#0066cc;">Grand Total = ${grandTotal.toFixed(2)}</b><br>`;
         html += `<b style="font-size:18px; color:#0066cc;">Total ÷ 2 = ${(grandTotal / 2).toFixed(2)}</b>`;
+      }
+
+      currentGrandTotal = grandTotal;
+      originalGrandTotal = grandTotal;
+      resultDiv.innerHTML = html;
+    }
+
+    function adjustTotal(amount) {
+      currentGrandTotal += amount;
+      updatePasteResult();
+      document.getElementById('customAmount').value = '';
+    }
+
+    function adjustCustom() {
+      const customAmount = parseFloat(document.getElementById('customAmount').value);
+      if (isNaN(customAmount)) {
+        alert("Please enter a valid number");
+        return;
+      }
+      currentGrandTotal += customAmount;
+      document.getElementById('customAmount').value = '';
+      updatePasteResult();
+    }
+
+    function resetCalculation() {
+      currentGrandTotal = originalGrandTotal;
+      document.getElementById('customAmount').value = '';
+      updatePasteResult();
+    }
+
+    function updatePasteResult() {
+      const resultDiv = document.getElementById('pasteResult');
+      let html = `<strong>Calculation Result (Adjusted):</strong><br><br>`;
+      
+      if (originalGrandTotal === 0) {
+        html += `<span style="color:red;">No data found.</span>`;
+      } else {
+        html += `<b style="font-size:18px; color:#0066cc;">Adjusted Total = ${currentGrandTotal.toFixed(2)}</b><br>`;
+        html += `<b style="font-size:18px; color:#0066cc;">Total ÷ 2 = ${(currentGrandTotal / 2).toFixed(2)}</b><br>`;
+        if (currentGrandTotal !== originalGrandTotal) {
+          const diff = currentGrandTotal - originalGrandTotal;
+          const sign = diff > 0 ? '+' : '';
+          html += `<small style="color:#666;">Original: ${originalGrandTotal.toFixed(2)} (${sign}${diff.toFixed(2)})</small>`;
+        }
       }
 
       resultDiv.innerHTML = html;
